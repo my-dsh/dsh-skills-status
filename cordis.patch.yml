@@ -1,0 +1,14 @@
+# The dsh-skills-status bundle patch: one row that contributes the
+# composer-toolbar button and the Host routes behind it.
+#
+# The row changes no skill provider. It reads the catalog the composition
+# already publishes, keeps each workspace's switches in one SQLite database,
+# and hides a skill the user turned off by registering a same-name runtime
+# entry with both invocation policies false inside that Agent's own scope —
+# which is what removes it from the model catalog, the `skill` tool, and the
+# `/` menu at once.
+#
+# `databasePath` defaults to `$DSH_HOME/skills-status/skills-status.db`.
+- insert:
+    - id: skills-status
+      name: '@my-dsh/dsh-skills-status'

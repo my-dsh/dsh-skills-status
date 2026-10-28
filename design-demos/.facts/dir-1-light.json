@@ -1,0 +1,39 @@
+{
+ "small": [],
+ "lowContrast": [],
+ "eyebrows": [],
+ "dots": 0,
+ "emDashLabels": 0,
+ "arrows": 0,
+ "numbered": [],
+ "accentWord": [],
+ "cardKit": 26,
+ "hairlines": 2,
+ "radiusZero": 0,
+ "radiusTotal": 0,
+ "monoSmall": 0,
+ "broken": [],
+ "fonts": {
+  "-apple-system": 4937
+ },
+ "display": "-apple-system",
+ "body": "-apple-system",
+ "headlineSerif": false,
+ "textColors": {
+  "15,17,21": 6174,
+  "97,102,107": 62392,
+  "255,255,255": 252
+ },
+ "bg": [
+  243,
+  244,
+  246,
+  1
+ ],
+ "bodySmall": [],
+ "relImgs": [],
+ "textTotal": 4937,
+ "bodyPx": 13,
+ "errors": [],
+ "path": "http://127.0.0.1:8765/design-demos/dir-1.html"
+}

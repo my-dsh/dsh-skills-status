@@ -1,0 +1,184 @@
+[
+ {
+  "name": "agently-mail",
+  "description": "通过 agently-cli 命令行工具操作邮件：发送、回复、转发、搜索、读取、下载附件、管理收件箱。当用户需要进行任何邮件相关操作时使用此 skill。",
+  "source": "user-agents",
+  "upstream": "agent.qq.com",
+  "upstreamUrl": "https://agent.qq.com/.well-known/skills/agently-mail/SKILL.md"
+ },
+ {
+  "name": "agents-sdk",
+  "description": "Build, debug, or review Cloudflare Agents SDK applications using the agents package.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "cloudflare",
+  "description": "Discover and choose Cloudflare products for apps, APIs, AI agents, storage, networking, and security. Use for architecture and product selection, including when the user describes a need without naming a Cloudflare product; then find the relevant skill or documentation.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "cloudflare-email-service",
+  "description": "Implement or troubleshoot Cloudflare Email Sending and Email Routing integrations and their delivery configuration.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "cloudflare-one",
+  "description": "Design, configure, troubleshoot, or review Cloudflare One Zero Trust and SASE deployments. Use cloudflare-one-migrations for migration planning from other vendors.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "cloudflare-one-migrations",
+  "description": "Assess and plan migrations from existing VPN, SWG, or SASE platforms to Cloudflare One, including policy mapping, parity gaps, and rollout.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "code-review",
+  "description": "Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\".",
+  "source": "user-agents",
+  "upstream": "mattpocock/skills",
+  "upstreamUrl": "https://github.com/mattpocock/skills.git"
+ },
+ {
+  "name": "domain-modeling",
+  "description": "Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a CONTEXT.md, or recording or editing an ADR.",
+  "source": "user-agents",
+  "upstream": "mattpocock/skills",
+  "upstreamUrl": "https://github.com/mattpocock/skills.git"
+ },
+ {
+  "name": "durable-objects",
+  "description": "Build, debug, or review Cloudflare Durable Objects code for persistent state and coordination.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "find-skills",
+  "description": "Helps users discover and install agent skills when they ask questions like \"how do I do X\", \"find a skill for X\", \"is there a skill that can...\", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.",
+  "source": "user-agents",
+  "upstream": "vercel-labs/skills",
+  "upstreamUrl": "https://github.com/vercel-labs/skills.git"
+ },
+ {
+  "name": "grill-me",
+  "description": "A relentless interview to sharpen a plan or design.",
+  "source": "user-agents",
+  "upstream": "mattpocock/skills",
+  "upstreamUrl": "https://github.com/mattpocock/skills.git"
+ },
+ {
+  "name": "grill-with-docs",
+  "description": "A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go.",
+  "source": "user-agents",
+  "upstream": "mattpocock/skills",
+  "upstreamUrl": "https://github.com/mattpocock/skills.git"
+ },
+ {
+  "name": "grilling",
+  "description": "Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.",
+  "source": "user-agents",
+  "upstream": "mattpocock/skills",
+  "upstreamUrl": "https://github.com/mattpocock/skills.git"
+ },
+ {
+  "name": "huashu-design",
+  "description": "花叔Design——用HTML做高保真原型、幻灯片、动画、可视化与专家评审。任何新设计100%先出三个方向初稿给用户选（指定风格/品牌也不豁免），选定后才执行。触发词：做原型、PPT、幻灯片、动画、设计风格、评审、做个HTML页面、UI mockup、导出MP4/GIF、做个好看的。生产级Web App/需后端的系统不适用。",
+  "source": "user-agents",
+  "upstream": "local",
+  "upstreamUrl": null
+ },
+ {
+  "name": "nextjs-on-cloudflare",
+  "description": "Build, migrate, and deploy Next.js apps on Cloudflare Workers with vinext. Use when starting a Next.js project on Cloudflare, moving an existing app to Workers, choosing between vinext and OpenNext, or setting up vinext for Workers. For setup, migration, or deployment, install vinext's upstream skills with `npx skills add cloudflare/vinext` if missing, then read and follow the applicable skill and docs.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "sandbox-migrate-to-next",
+  "description": "Migrate Cloudflare Sandbox apps from stable @cloudflare/sandbox to @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-next for apps already on the preview.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "sandbox-next",
+  "description": "Build or maintain Cloudflare Sandbox apps on @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-migrate-to-next when porting a stable app.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "sandbox-stable",
+  "description": "Build or maintain Cloudflare Sandbox apps on the stable @cloudflare/sandbox package. Use sandbox-next for preview apps and sandbox-migrate-to-next for stable-to-preview migrations.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "setup-matt-pocock-skills",
+  "description": "Configure this repo for the engineering skills — set up its issue tracker, triage label vocabulary, and domain doc layout. Run once before first use of the other engineering skills.",
+  "source": "user-agents",
+  "upstream": "mattpocock/skills",
+  "upstreamUrl": "https://github.com/mattpocock/skills.git"
+ },
+ {
+  "name": "show-me",
+  "description": "Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts.",
+  "source": "user-agents",
+  "upstream": "humanlayer/skills",
+  "upstreamUrl": "https://github.com/humanlayer/skills.git"
+ },
+ {
+  "name": "to-tickets",
+  "description": "Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker — edges as text in one file per ticket locally, or native blocking links on a real tracker.",
+  "source": "user-agents",
+  "upstream": "mattpocock/skills",
+  "upstreamUrl": "https://github.com/mattpocock/skills.git"
+ },
+ {
+  "name": "triage",
+  "description": "Move issues and external PRs through a state machine of triage roles — categorise, verify, grill if needed, and write agent-ready briefs.",
+  "source": "user-agents",
+  "upstream": "mattpocock/skills",
+  "upstreamUrl": "https://github.com/mattpocock/skills.git"
+ },
+ {
+  "name": "turnstile-spin",
+  "description": "Set up, repair, or migrate to Cloudflare Turnstile bot verification in an existing frontend and backend, including server-side Siteverify.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "web-perf",
+  "description": "Audit, diagnose, or optimize website loading and interaction performance, Core Web Vitals, and Lighthouse performance scores.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "workers-best-practices",
+  "description": "Cloudflare Workers best practices for production applications. Use when writing, reviewing, or configuring Workers.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ },
+ {
+  "name": "wrangler",
+  "description": "Run or troubleshoot Wrangler CLI commands and configure Worker projects for local development, deployment, and Cloudflare resource management.",
+  "source": "user-agents",
+  "upstream": "cloudflare/skills",
+  "upstreamUrl": "https://github.com/cloudflare/skills.git"
+ }
+]

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Skill loading",
+    "description": "Lists every skill of the current workspace in the composer toolbar and switches each one on or off, remembering the choice per workspace in SQLite so reopening it restores the same set."
+  }
+}

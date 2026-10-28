@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>六格缩略图 · 技能加载面板</title>
+<style>
+  /* 缩略图：六格，每格 480×300，是这个候选最关键的一屏。
+     用的是 DSH 亮色主题令牌解析后的真实值（面板 316px、16px 圆角、毛玻璃面）。
+     细节可以省，字体、配色、骨架、真内容不能省。 */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --ink: #0f1115; --ink2: #61666b; --ink3: #81858c;
+    --line: rgba(0,0,0,.07); --line2: rgba(0,0,0,.12);
+    --surface: #fbfbfc; --card: #fff; --hover: rgba(38,49,72,.06);
+    --brand: #0f1115; --ok: #22c55e;
+  }
+  body {
+    background: #e8e9eb; padding: 26px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    -webkit-font-smoothing: antialiased; color: var(--ink);
+  }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; max-width: 1500px; }
+  .cell { background: #fff; border-radius: 10px; overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 6px 20px rgba(0,0,0,.06); }
+  .cap { display: flex; align-items: baseline; gap: 8px; padding: 9px 14px;
+         border-bottom: 1px solid #eceef0; font-size: 12px; color: #61666b; }
+  .cap b { color: #0f1115; font-size: 13px; font-weight: 600; }
+  .cap .tag { margin-left: auto; font-size: 11px; color: #81858c; }
+  .stage { height: 318px; display: grid; place-items: start center; background: #f4f5f7; position: relative;
+           overflow: hidden; padding-top: 14px; }
+  .stage > .panel { transform: scale(.76); transform-origin: top center; }
+
+  /* 面板外壳：316px，和真面板同一个圆角与投影 */
+  .panel {
+    width: 316px; border-radius: 16px; background: var(--surface); overflow: hidden;
+    color: var(--ink2); font-size: 12px; line-height: 18px;
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.08), 0 8px 28px rgba(0,0,0,.10);
+  }
+  .sw { flex: none; position: relative; width: 26px; height: 16px; border: none; border-radius: 8px;
+        background: var(--line2); }
+  .sw i { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%;
+          background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  .sw[aria-checked="true"] { background: var(--brand); }
+  .sw[aria-checked="true"] i { transform: translateX(10px); }
+
+  /* ============ A · 每行一张脸（Kare） ============ */
+  .a-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
+  .a-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .a-x { margin-left: auto; color: var(--ink3); font-size: 14px; }
+  .a-gsw { margin-left: auto; }
+  .a-seg { display: flex; gap: 2px; margin: 0 14px 8px; padding: 2px; background: var(--hover);
+           border-radius: 7px; width: max-content; }
+  .a-seg span { font-size: 11px; line-height: 16px; padding: 2px 8px; border-radius: 5px; color: var(--ink2); }
+  .a-seg span.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .a-list { padding: 0 6px 8px; }
+  .a-row { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 8px; }
+  .a-mono { flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
+            font-size: 11px; font-weight: 600; background: var(--ink); color: #fff; }
+  .a-mono.off { background: transparent; color: var(--ink3); box-shadow: inset 0 0 0 1px var(--line2); }
+  .a-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+  .a-name { font-size: 12px; line-height: 16px; color: var(--ink2); overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; }
+  .a-desc { font-size: 11.5px; line-height: 15px; color: var(--ink); overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ============ B · 读数带（Rams） ============ */
+  .b-head { padding: 13px 14px 10px; }
+  .b-top { display: flex; align-items: baseline; gap: 8px; }
+  .b-num { font-size: 26px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums;
+           letter-spacing: -.02em; line-height: 1; }
+  .b-slash { font-size: 12px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .b-label { margin-left: auto; font-size: 11px; color: var(--ink2); }
+  .b-scale { display: flex; gap: 2px; margin-top: 9px; height: 12px; }
+  .b-scale i { flex: 1; border-radius: 1px; background: var(--line2); }
+  .b-scale i.on { background: var(--ink); }
+  .b-groups { padding: 0 6px 6px; }
+  .b-glabel { display: flex; align-items: center; gap: 6px; padding: 7px 8px 3px; }
+  .b-glabel b { font-size: 11px; font-weight: 600; color: var(--ink); }
+  .b-gscale { display: flex; gap: 1.5px; height: 6px; flex: none; width: 54px; }
+  .b-gscale i { flex: 1; border-radius: 1px; background: var(--line2); }
+  .b-gscale i.on { background: var(--ink); }
+  .b-gcount { margin-left: auto; font-size: 11px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .b-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; }
+  .b-name { font-size: 12px; line-height: 16px; color: var(--ink); margin-right: auto; }
+  .b-desc { font-size: 11px; line-height: 14px; color: var(--ink2); overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ============ C · 作用域筛选（VS Code） ============ */
+  .c-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
+  .c-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .c-x { margin-left: auto; color: var(--ink3); font-size: 14px; }
+  .c-search { margin: 0 14px 8px; height: 28px; border: 1px solid var(--line2); border-radius: 8px;
+              display: flex; align-items: center; gap: 6px; padding: 0 8px; color: var(--ink3); font-size: 12px; }
+  .c-search em { margin-left: auto; font-style: normal; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .c-chips { display: flex; gap: 4px; padding: 0 14px 8px; overflow: hidden; }
+  .c-chip { display: flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 6px;
+            border: 1px solid var(--line2); font-size: 11px; color: var(--ink2); white-space: nowrap; }
+  .c-chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .c-chip i { width: 4px; height: 4px; border-radius: 1px; background: currentColor; opacity: .45; }
+  .c-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin: 0 6px; border-radius: 8px; }
+  .c-body { min-width: 0; flex: 1; }
+  .c-name { display: block; font-size: 12px; line-height: 16px; color: var(--ink); }
+  .c-desc { display: block; font-size: 11px; line-height: 14px; color: var(--ink2); overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; }
+  .c-row.off .c-name { color: var(--ink2); }
+  .c-row.off .c-desc { color: var(--ink3); }
+
+  /* ============ D · 键盘优先（命令面板） ============ */
+  .d-search { margin: 10px 10px 6px; height: 30px; border-radius: 8px; background: #fff;
+              box-shadow: 0 0 0 1px var(--line2); display: flex; align-items: center;
+              padding: 0 8px; gap: 6px; font-size: 12px; color: var(--ink3); }
+  .d-kbd { margin-left: auto; font-size: 10px; padding: 1px 4px; border-radius: 3px;
+           background: var(--hover); color: var(--ink2); }
+  .d-glabel { padding: 6px 16px 2px; font-size: 10px; color: var(--ink3); }
+  .d-row { display: flex; align-items: center; gap: 8px; margin: 0 6px; padding: 5px 8px; border-radius: 6px; }
+  .d-row.focus { background: #fff; box-shadow: 0 0 0 1px var(--line2); }
+  .d-name { font-size: 12px; color: var(--ink); }
+  .d-desc { font-size: 10.5px; color: var(--ink2); }
+
+  /* ============ E · 电影感声波（深色） ============ */
+  .e-panel { background: #0a0a0b; color: #a9adb3; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+  .e-head { padding: 14px 14px 6px; }
+  .e-num { font-size: 30px; font-weight: 600; color: #fff; line-height: 1; letter-spacing: -.02em; }
+  .e-num span { font-size: 12px; color: #8d9198; font-weight: 400; }
+  .e-wave { display: flex; align-items: flex-end; gap: 2px; height: 26px; margin: 10px 14px 8px; }
+  .e-wave i { flex: 1; background: #3a3b40; border-radius: 1px; }
+  .e-wave i.on { background: #8b7bff; }
+  .e-row { display: flex; align-items: center; gap: 8px; padding: 5px 14px; }
+  .e-name { font-size: 12px; color: #f2f3f5; }
+  .e-desc { font-size: 10.5px; color: #8d9198; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ============ F · 装饰艺术格阵 ============ */
+  .f-panel { background: #17352f; color: #e8dcc0; padding: 10px; }
+  .f-frame { border: 1px solid #c9a24a; padding: 8px; }
+  .f-inner { border: 1px solid rgba(201,162,74,.4); padding: 9px; }
+  .f-top { display: flex; align-items: baseline; gap: 6px; border-bottom: 1px solid rgba(201,162,74,.35);
+           padding-bottom: 6px; margin-bottom: 8px; }
+  .f-title { font-size: 12px; color: #c9a24a; letter-spacing: .18em; }
+  .f-count { margin-left: auto; font-size: 10px; color: #c9a24a; }
+  .f-cols { display: flex; gap: 8px; }
+  .f-spine { writing-mode: vertical-rl; font-size: 10px; letter-spacing: .3em; color: #c9a24a; }
+  .f-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; }
+  .f-cell { aspect-ratio: 1; border: 1px solid rgba(201,162,74,.45); display: grid; place-items: center;
+            font-size: 9px; color: #e8dcc0; }
+  .f-cell.on { background: #c9a24a; border-color: #c9a24a; color: #17352f; font-weight: 700; }
+  .f-foot { margin-top: 8px; background: #9e2a1d; color: #f4e8d6; font-size: 10px;
+            padding: 4px 8px; display: flex; gap: 10px; }
+  @media (max-width: 900px) {
+    body { padding: 16px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="grid">
+
+  <!-- A -->
+  <div class="cell">
+    <div class="cap"><b>A · 每行一张脸</b><span>Susan Kare</span><span class="tag">描述优先</span></div>
+    <div class="stage">
+      <div class="panel">
+        <div class="a-head"><span class="a-title">技能</span><span class="a-x">×</span></div>
+        <div class="a-seg"><span class="on">全部 26</span><span>已加载 10</span></div>
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 14px 0;font-size:10.5px;color:#81858c"><span style="font-weight:600;color:#0f1115">cloudflare/skills</span><span>3/14</span><span class="sw" style="margin-left:auto;transform:scale(.72);transform-origin:right" aria-checked="false"><i></i></span></div>
+        <div class="a-list">
+          <div class="a-row"><span class="a-mono">C</span><span class="a-body"><span class="a-name">cloudflare</span><span class="a-desc">Choose Cloudflare products for apps, APIs, AI agents</span></span><button class="sw" aria-checked="true"><i></i></button></div>
+          <div class="a-row"><span class="a-mono off">W</span><span class="a-body"><span class="a-name">wrangler</span><span class="a-desc">Run or troubleshoot Wrangler CLI commands</span></span><button class="sw" aria-checked="false"><i></i></button></div>
+          <div class="a-row"><span class="a-mono off">S</span><span class="a-body"><span class="a-name">sandbox-migrate-to-next</span><span class="a-desc">Migrate Sandbox apps from stable to @next</span></span><button class="sw" aria-checked="false"><i></i></button></div>
+          <div class="a-row"><span class="a-mono">R</span><span class="a-body"><span class="a-name">code-review</span><span class="a-desc">Review the changes since a fixed point along two axes</span></span><button class="sw" aria-checked="true"><i></i></button></div>
+          <div class="a-row"><span class="a-mono">G</span><span class="a-body"><span class="a-name">grilling</span><span class="a-desc">Grill the user relentlessly about a plan or decision</span></span><button class="sw" aria-checked="true"><i></i></button></div>
+          <div class="a-row"><span class="a-mono off">F</span><span class="a-body"><span class="a-name">find-skills</span><span class="a-desc">Discover and install agent skills</span></span><button class="sw" aria-checked="false"><i></i></button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="cell">
+    <div class="cap"><b>B · 读数带</b><span>Rams / Braun</span><span class="tag">先读数后列表</span></div>
+    <div class="stage">
+      <div class="panel">
+        <div class="b-head">
+          <div class="b-top"><span class="b-num">10</span><span class="b-slash">/ 26 已加载</span><span class="b-label">6 个来源</span></div>
+          <div class="b-scale">
+            <i class="on"></i><i></i><i class="on"></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i class="on"></i><i class="on"></i><i></i><i class="on"></i><i class="on"></i><i></i><i></i><i class="on"></i>
+          </div>
+        </div>
+        <div class="b-groups">
+          <div class="b-glabel"><b>cloudflare/skills</b><span class="b-gscale"><i class="on"></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i></span><span class="b-gcount">3/14</span></div>
+          <div class="b-row"><span class="b-name">cloudflare</span><span class="sw" style="margin-left:auto" aria-checked="true"><i></i></span></div>
+          <div class="b-row"><span class="b-name">workers-best-practices</span><span class="sw" style="margin-left:auto" aria-checked="true"><i></i></span></div>
+          <div class="b-row"><span class="b-name">wrangler</span><span class="sw" style="margin-left:auto" aria-checked="false"><i></i></span></div>
+          <div class="b-glabel"><b>mattpocock/skills</b><span class="b-gscale"><i class="on"></i><i class="on"></i><i></i><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span><span class="b-gcount">5/8</span></div>
+          <div class="b-row"><span class="b-name">code-review</span><span class="sw" style="margin-left:auto" aria-checked="true"><i></i></span></div>
+          <div class="b-row"><span class="b-name">domain-modeling</span><span class="sw" style="margin-left:auto" aria-checked="true"><i></i></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="cell">
+    <div class="cap"><b>C · 作用域筛选</b><span>VS Code Extensions</span><span class="tag">扁平 · 无折叠</span></div>
+    <div class="stage">
+      <div class="panel">
+        <div class="c-head"><span class="c-title">技能</span><span class="c-x">×</span></div>
+        <div class="c-search">筛选技能<em>10/26</em></div>
+        <div class="c-chips">
+          <span class="c-chip on">全部 26</span>
+          <span class="c-chip">cloudflare 14</span>
+          <span class="c-chip">mattpocock 8</span>
+          <span class="c-chip">其他 4</span>
+        </div>
+        <div class="c-row"><span class="c-body"><span class="c-name">cloudflare</span><span class="c-desc">Choose Cloudflare products for apps, APIs, AI agents</span></span><button class="sw" aria-checked="true"><i></i></button></div>
+        <div class="c-row off"><span class="c-body"><span class="c-name">wrangler</span><span class="c-desc">Run or troubleshoot Wrangler CLI commands</span></span><button class="sw" aria-checked="false"><i></i></button></div>
+        <div class="c-row off"><span class="c-body"><span class="c-name">sandbox-migrate-to-next</span><span class="c-desc">Migrate Sandbox apps from stable to @next</span></span><button class="sw" aria-checked="false"><i></i></button></div>
+        <div class="c-row"><span class="c-body"><span class="c-name">durable-objects</span><span class="c-desc">Build, debug, or review Durable Objects code</span></span><button class="sw" aria-checked="true"><i></i></button></div>
+        <div class="c-row off"><span class="c-body"><span class="c-name">turnstile-spin</span><span class="c-desc">Set up, repair, or migrate to Turnstile</span></span><button class="sw" aria-checked="false"><i></i></button></div>
+        <div class="c-row off"><span class="c-body"><span class="c-name">web-perf</span><span class="c-desc">Audit, diagnose, or optimize website performance</span></span><button class="sw" aria-checked="false"><i></i></button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D -->
+  <div class="cell">
+    <div class="cap"><b>D · 键盘优先</b><span>Linear / Geist Command Menu</span><span class="tag">备选</span></div>
+    <div class="stage">
+      <div class="panel">
+        <div class="d-search">技能<span class="d-kbd">esc</span></div>
+        <div class="d-glabel">cloudflare/skills · 3/14</div>
+        <div class="d-row focus"><span class="c-body"><span class="d-name">cloudflare</span><br><span class="d-desc">Choose Cloudflare products for apps, APIs</span></span><button class="sw" aria-checked="true"><i></i></button></div>
+        <div class="d-row"><span class="c-body"><span class="d-name">workers-best-practices</span><br><span class="d-desc">Workers best practices for production apps</span></span><button class="sw" aria-checked="true"><i></i></button></div>
+        <div class="d-row"><span class="c-body"><span class="d-name">wrangler</span><br><span class="d-desc">Run or troubleshoot Wrangler CLI commands</span></span><button class="sw" aria-checked="false"><i></i></button></div>
+        <div class="d-glabel">mattpocock/skills · 5/8</div>
+        <div class="d-row"><span class="c-body"><span class="d-name">code-review</span><br><span class="d-desc">Review the changes since a fixed point</span></span><button class="sw" aria-checked="true"><i></i></button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- E -->
+  <div class="cell">
+    <div class="cap"><b>E · 电影感声波</b><span>轮盘 8 号</span><span class="tag">备选</span></div>
+    <div class="stage">
+      <div class="panel e-panel">
+        <div class="e-head"><div class="e-num">10<span> / 26</span></div></div>
+        <div class="e-wave">
+          <i class="on" style="height:60%"></i><i style="height:30%"></i><i class="on" style="height:80%"></i><i style="height:40%"></i><i style="height:25%"></i><i style="height:55%"></i><i class="on" style="height:90%"></i><i style="height:35%"></i><i style="height:45%"></i><i style="height:20%"></i><i class="on" style="height:70%"></i><i style="height:50%"></i><i class="on" style="height:65%"></i><i style="height:30%"></i><i class="on" style="height:85%"></i><i class="on" style="height:75%"></i><i style="height:40%"></i><i class="on" style="height:60%"></i><i class="on" style="height:55%"></i><i style="height:35%"></i><i style="height:25%"></i><i class="on" style="height:80%"></i>
+        </div>
+        <div class="e-row"><span class="c-body"><span class="e-name">cloudflare</span><br><span class="e-desc">Choose Cloudflare products for apps, APIs</span></span><button class="sw" aria-checked="true"><i></i></button></div>
+        <div class="e-row"><span class="c-body"><span class="e-name">wrangler</span><br><span class="e-desc">Run or troubleshoot Wrangler CLI commands</span></span><button class="sw" aria-checked="false"><i></i></button></div>
+        <div class="e-row"><span class="c-body"><span class="e-name">code-review</span><br><span class="e-desc">Review the changes since a fixed point</span></span><button class="sw" aria-checked="true"><i></i></button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- F -->
+  <div class="cell">
+    <div class="cap"><b>F · 装饰艺术格阵</b><span>轮盘 东亚 4 号</span><span class="tag">备选 · 过头</span></div>
+    <div class="stage">
+      <div class="panel f-panel">
+        <div class="f-frame"><div class="f-inner">
+          <div class="f-top"><span class="f-title">技能</span><span class="f-count">10 / 26</span></div>
+          <div class="f-cols">
+            <span class="f-spine">CLOUDFLARE / SKILLS</span>
+            <div class="f-grid">
+              <span class="f-cell on">C</span><span class="f-cell">A</span><span class="f-cell">E</span><span class="f-cell">O</span><span class="f-cell">M</span>
+              <span class="f-cell">N</span><span class="f-cell">S</span><span class="f-cell">S</span><span class="f-cell on">D</span><span class="f-cell">T</span>
+              <span class="f-cell">W</span><span class="f-cell on">W</span><span class="f-cell">E</span><span class="f-cell">S</span><span class="f-cell">S</span>
+            </div>
+          </div>
+          <div class="f-foot"><span>全部加载</span><span>全部关闭</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

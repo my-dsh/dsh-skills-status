@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>方向 C：作用域筛选</title>
+<style>
+  :root {
+    --menu: rgba(248, 249, 250, 0.58);
+    --ink: #0f1115;
+    --ink-2: #61666b;
+    --ink-3: #81858c;
+    --line-1: rgba(0, 0, 0, 0.04);
+    --line-2: rgba(0, 0, 0, 0.10);
+    --line-3: rgba(0, 0, 0, 0.16);
+    --hover: rgba(38, 49, 72, 0.06);
+    --brand: #0f1115;
+    --brand-ink: #ffffff;
+    --ok: #22c55e;
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --elev: 0 0 0 0.5px rgba(0, 0, 0, 0.16), 0 3px 8px rgba(0, 0, 0, 0.04), 0 0 20px rgba(0, 0, 0, 0.05);
+    --knob: #ffffff;
+    --knob-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    --page: #eceef1;
+    --page-ink: #0f1115;
+    --page-dim: #61666b;
+  }
+  .dark {
+    --menu: rgba(67, 69, 74, 0.45);
+    --ink: #f9fafb;
+    --ink-2: #cfd3d6;
+    --ink-3: #adb2b8;
+    --line-1: rgba(255, 255, 255, 0.06);
+    --line-2: rgba(255, 255, 255, 0.12);
+    --line-3: rgba(255, 255, 255, 0.20);
+    --hover: rgba(255, 255, 255, 0.08);
+    --brand: #f9fafb;
+    --brand-ink: #1b1b1d;
+    --elev: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 3px 8px rgba(0, 0, 0, 0.35), 0 0 20px rgba(0, 0, 0, 0.28);
+    --knob: #1b1b1d;
+    --knob-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --page: #151517;
+    --page-ink: #f9fafb;
+    --page-dim: #a2a7ad;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  /* An explicit display in a class rule outranks the UA [hidden] rule, so any
+     element toggled by the state switcher needs this to actually hide. */
+  [hidden] { display: none !important; }
+  body {
+    background: #f7f8fa; padding: 34px 40px 44px; color: #0f1115;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+                 "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page-head { max-width: 1180px; }
+  .page-kicker { font-size: 12px; color: #61666b; letter-spacing: .01em; }
+  .page-title { margin-top: 6px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+  .page-note { margin-top: 8px; font-size: 13px; line-height: 21px; color: #61666b; max-width: 760px; }
+  .stage { margin-top: 26px; display: flex; gap: 28px; align-items: flex-start; }
+  .col { flex: none; width: 404px; }
+  .colcap { display: flex; align-items: baseline; gap: 8px; margin-bottom: 9px; font-size: 12px; color: #61666b; }
+  .colcap b { font-size: 12px; font-weight: 600; color: #0f1115; }
+  .surface {
+    width: 100%; min-height: 560px; border-radius: 20px; background: var(--page);
+    display: flex; align-items: flex-start; justify-content: center; padding: 18px 12px 24px;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .05);
+  }
+  .dark.surface { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+  .states { margin-top: 30px; }
+  .states h2 { font-size: 14px; font-weight: 600; color: #0f1115; }
+  .states p { margin-top: 4px; font-size: 14px; line-height: 21px; color: #61666b; max-width: 760px; }
+  .states .row { margin-top: 14px; display: flex; gap: 22px; flex-wrap: wrap; }
+  .states figure { margin: 0; }
+  .states figcaption { margin-top: 7px; font-size: 13px; color: #61666b; }
+  .notes { margin-top: 30px; max-width: 1180px; display: flex; gap: 40px; }
+  .notes div { flex: 1; }
+  .notes dt { font-size: 12px; font-weight: 600; color: #0f1115; }
+  .notes dd { margin-top: 3px; font-size: 13px; line-height: 20px; color: #61666b; }
+
+  /* ---- the popover shell every direction shares ---- */
+  .panel {
+    position: relative; width: 380px; max-width: 100%; height: 524px;
+    display: flex; flex-direction: column;
+    border-radius: var(--radius-lg); background: var(--menu);
+    -webkit-backdrop-filter: blur(40px) saturate(150%);
+    backdrop-filter: blur(40px) saturate(150%);
+    box-shadow: var(--elev);
+    color: var(--ink-2);
+    font-size: 14px; line-height: 20px;
+    overflow: hidden;
+  }
+  .panel * { flex-shrink: 0; }
+  .panel .grow { flex: 1 1 auto; min-height: 0; }
+  .head { display: flex; align-items: center; gap: 10px; padding: 13px 14px 0; }
+  .title { font-size: 15px; font-weight: 600; line-height: 22px; color: var(--ink); letter-spacing: -.005em; }
+  .x {
+    margin-left: auto; width: 26px; height: 26px; display: grid; place-items: center;
+    border: none; background: transparent; border-radius: var(--radius-sm);
+    color: var(--ink-2); font-size: 15px; line-height: 1; cursor: pointer;
+  }
+  .x:hover { background: var(--hover); color: var(--ink); }
+  .search {
+    display: flex; align-items: center; gap: 8px; margin: 10px 14px 4px; height: 30px; padding: 0 9px;
+    border: 1px solid var(--line-2); border-radius: var(--radius-sm);
+  }
+  .search input {
+    flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+    color: var(--ink); font: inherit; font-size: 13px; line-height: 18px;
+  }
+  .search input::placeholder { color: var(--ink-2); }
+  .sw {
+    position: relative; width: 34px; height: 20px; border: none; border-radius: 10px;
+    background: var(--line-3); cursor: pointer; transition: background 120ms ease;
+  }
+  .sw i {
+    position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--knob); box-shadow: var(--knob-shadow); transition: transform 120ms ease;
+  }
+  .sw[aria-checked="true"] { background: var(--brand); }
+  .sw[aria-checked="true"] i { transform: translateX(14px); }
+  .name { font-size: 14px; line-height: 20px; font-weight: 500; color: var(--ink); }
+  .desc {
+    display: block; font-size: 14px; line-height: 19px; color: var(--ink-2);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .foot {
+    display: flex; align-items: center; gap: 12px; margin-top: auto;
+    padding: 9px 14px; border-top: 1px solid var(--line-1);
+    font-size: 12px; line-height: 18px; color: var(--ink-2);
+  }
+  .foot .ws { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .textbtn {
+    border: none; background: transparent; padding: 0; cursor: pointer;
+    font: inherit; font-size: 12px; line-height: 18px; color: var(--ink-2);
+  }
+  .textbtn:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+  .textbtn:disabled { color: var(--ink-3); text-decoration: none; cursor: default; }
+  .list { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+  .list::-webkit-scrollbar { width: 8px; }
+  .list::-webkit-scrollbar-thumb { background: var(--line-3); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+
+  .states { margin-top: 34px; max-width: 1180px; }
+  .states h2 { font-size: 14px; font-weight: 600; color: #0f1115; }
+  .states > p { margin-top: 4px; font-size: 14px; line-height: 21px; color: #61666b; max-width: 760px; }
+  .sframe { margin-top: 16px; display: flex; gap: 20px; flex-wrap: wrap; }
+  /* Flex items default to min-width:auto, and a row's nowrap description gives the
+     panel a huge min-content width — pin the figure so the panel stays 380px. */
+  .sframe figure { margin: 0; flex: 0 0 380px; min-width: 0; }
+  .states .panel { width: 380px; }
+  .sframe .cap { font-size: 13px; line-height: 19px; color: #61666b; margin-bottom: 8px; }
+  .states .panel { box-shadow: 0 0 0 0.5px rgba(0,0,0,.14), 0 3px 8px rgba(0,0,0,.05); }
+  .note {
+    margin: 8px 14px 0; padding: 7px 9px; border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, .05); font-size: 13px; line-height: 19px; color: var(--ink);
+  }
+  .note[data-bad="true"] { color: #b42318; background: rgba(180, 35, 24, .08); }
+  .surface.dark .note { background: rgba(255, 255, 255, .07); }
+  .surface.dark .note[data-bad="true"] { color: #ffb4a8; background: rgba(255, 90, 70, .14); }
+  .empty { padding: 26px 18px; text-align: center; }
+  .empty b { display: block; font-size: 14px; line-height: 20px; font-weight: 500; color: var(--ink); }
+  .empty span { display: block; margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--ink-2); }
+
+  /* Below 900px the light/dark pair and the three state panels stack, and the
+     popover keeps its grammar capped to the container. */
+  @media (max-width: 900px) {
+    body { padding: 22px 12px 30px; }
+    .stage { flex-direction: column; gap: 20px; }
+    .notes { flex-direction: column; gap: 16px; }
+    .col { width: 100%; }
+    .panel { width: 100%; }
+    .sframe figure { flex: 1 1 100%; }
+    .states .panel { width: 100%; }
+  }
+
+
+  /* ---- C: filter by the batch you installed, then read one flat list ---- */
+  .c-panel .search { margin-bottom: 8px; }
+  .c-count { font-size: 12px; line-height: 18px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .c-chips { display: flex; gap: 6px; padding: 0 14px; overflow: hidden; }
+  .c-chip {
+    display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px;
+    border: 1px solid var(--line-2); border-radius: var(--radius-sm);
+    background: transparent; cursor: pointer;
+    font: inherit; font-size: 12px; line-height: 18px; color: var(--ink-2); white-space: nowrap;
+  }
+  .c-chip span { font-variant-numeric: tabular-nums; }
+  .c-chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+  .c-scopebar {
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px 6px;
+    border-bottom: 1px solid var(--line-1);
+  }
+  .c-scope { font-size: 12px; line-height: 18px; color: var(--ink-2); }
+  .c-scopebar .textbtn:first-of-type { margin-left: auto; }
+  .c-sec { padding: 0 8px 6px; }
+  .c-slabel {
+    display: flex; align-items: center; gap: 8px; padding: 9px 6px 3px;
+    font-size: 12px; line-height: 18px; font-weight: 600; color: var(--ink-2);
+  }
+  .c-slabel span { margin-left: auto; font-weight: 400; font-variant-numeric: tabular-nums; }
+  .c-row { display: flex; align-items: center; gap: 10px; padding: 7px 6px; border-radius: var(--radius-sm); }
+  .c-row:hover { background: var(--hover); }
+  .c-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .c-row[data-on="false"] .name { color: var(--ink-2); font-weight: 400; }
+</style>
+</head>
+<body>
+  <header class="page-head">
+    <div class="page-kicker">技能加载面板重设计 / 方向 C / 六选三</div>
+    <h1 class="page-title">方向 C：作用域筛选</h1>
+    <p class="page-note">VS Code 扩展视图的做法：同一种问题（已安装的能力，逐个启用）已经有一个成熟答案——一行两段文字，关掉的行整行降级，筛选器是主控件。这里把「上游仓库」变成作用域筛选器，于是整棵可折叠分组树连同它的记忆状态一起消失，列表永远只有一个真相。</p>
+  </header>
+
+  <div class="stage">
+    <div class="col">
+      <div class="colcap"><b>亮色</b>DSH 默认主题</div>
+      <div class="surface">      <div class="panel c-panel">
+        <div class="head">
+          <span class="title">技能</span>
+          <button class="x" aria-label="关闭">×</button>
+        </div>
+        <label class="search"><input type="search" placeholder="筛选技能" aria-label="筛选技能"><span class="c-count">10/26</span></label>
+        <div class="c-chips">
+          <button class="c-chip" aria-pressed="true">全部<span>26</span></button>
+          <button class="c-chip" aria-pressed="false">cloudflare<span>14</span></button>
+          <button class="c-chip" aria-pressed="false">mattpocock<span>8</span></button>
+          <button class="c-chip" aria-pressed="false">其他<span>4</span></button>
+        </div>
+        <div class="c-scopebar">
+          <span class="c-scope">全部 26 个</span>
+          <button class="textbtn">全部加载</button>
+          <button class="textbtn">全部关闭</button>
+        </div>
+        <div class="list grow">
+      <div class="c-sec group">
+        <div class="c-slabel">agent.qq.com<span>0/1</span></div>
+        <div class="c-row" data-name="agently-mail" data-on="false">
+          <span class="c-body"><span class="name">agently-mail</span><span class="desc">通过 agently-cli 命令行工具操作邮件：发送、回复、转发、搜索、读取、下载附件、管理收件箱。当用户需要进行任何邮件相关操作时使用此 skill。</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 agently-mail"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">cloudflare/skills<span>3/14</span></div>
+        <div class="c-row" data-name="agents-sdk" data-on="false">
+          <span class="c-body"><span class="name">agents-sdk</span><span class="desc">Build, debug, or review Cloudflare Agents SDK applications using the agents package.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 agents-sdk"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare" data-on="true">
+          <span class="c-body"><span class="name">cloudflare</span><span class="desc">Discover and choose Cloudflare products for apps, APIs, AI agents, storage, networking, and security. Use for architecture and product selection, including when the user describes a need without naming a Cloudflare product; then find the relevant skill or documentation.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 cloudflare"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-email-service" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-email-service</span><span class="desc">Implement or troubleshoot Cloudflare Email Sending and Email Routing integrations and their delivery configuration.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-email-service"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-one" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-one</span><span class="desc">Design, configure, troubleshoot, or review Cloudflare One Zero Trust and SASE deployments. Use cloudflare-one-migrations for migration planning from other vendors.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-one"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-one-migrations" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-one-migrations</span><span class="desc">Assess and plan migrations from existing VPN, SWG, or SASE platforms to Cloudflare One, including policy mapping, parity gaps, and rollout.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-one-migrations"><i></i></button>
+        </div>
+        <div class="c-row" data-name="durable-objects" data-on="true">
+          <span class="c-body"><span class="name">durable-objects</span><span class="desc">Build, debug, or review Cloudflare Durable Objects code for persistent state and coordination.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 durable-objects"><i></i></button>
+        </div>
+        <div class="c-row" data-name="nextjs-on-cloudflare" data-on="false">
+          <span class="c-body"><span class="name">nextjs-on-cloudflare</span><span class="desc">Build, migrate, and deploy Next.js apps on Cloudflare Workers with vinext. Use when starting a Next.js project on Cloudflare, moving an existing app to Workers, choosing between vinext and OpenNext, or setting up vinext for Workers. For setup, migration, or deployment, install vinext's upstream skills with `npx skills add cloudflare/vinext` if missing, then read and follow the applicable skill and docs.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 nextjs-on-cloudflare"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-migrate-to-next" data-on="false">
+          <span class="c-body"><span class="name">sandbox-migrate-to-next</span><span class="desc">Migrate Cloudflare Sandbox apps from stable @cloudflare/sandbox to @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-next for apps already on the preview.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-migrate-to-next"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-next" data-on="false">
+          <span class="c-body"><span class="name">sandbox-next</span><span class="desc">Build or maintain Cloudflare Sandbox apps on @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-migrate-to-next when porting a stable app.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-next"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-stable" data-on="false">
+          <span class="c-body"><span class="name">sandbox-stable</span><span class="desc">Build or maintain Cloudflare Sandbox apps on the stable @cloudflare/sandbox package. Use sandbox-next for preview apps and sandbox-migrate-to-next for stable-to-preview migrations.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-stable"><i></i></button>
+        </div>
+        <div class="c-row" data-name="turnstile-spin" data-on="false">
+          <span class="c-body"><span class="name">turnstile-spin</span><span class="desc">Set up, repair, or migrate to Cloudflare Turnstile bot verification in an existing frontend and backend, including server-side Siteverify.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 turnstile-spin"><i></i></button>
+        </div>
+        <div class="c-row" data-name="web-perf" data-on="false">
+          <span class="c-body"><span class="name">web-perf</span><span class="desc">Audit, diagnose, or optimize website loading and interaction performance, Core Web Vitals, and Lighthouse performance scores.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 web-perf"><i></i></button>
+        </div>
+        <div class="c-row" data-name="workers-best-practices" data-on="true">
+          <span class="c-body"><span class="name">workers-best-practices</span><span class="desc">Cloudflare Workers best practices for production applications. Use when writing, reviewing, or configuring Workers.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 workers-best-practices"><i></i></button>
+        </div>
+        <div class="c-row" data-name="wrangler" data-on="false">
+          <span class="c-body"><span class="name">wrangler</span><span class="desc">Run or troubleshoot Wrangler CLI commands and configure Worker projects for local development, deployment, and Cloudflare resource management.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 wrangler"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">humanlayer/skills<span>0/1</span></div>
+        <div class="c-row" data-name="show-me" data-on="false">
+          <span class="c-body"><span class="name">show-me</span><span class="desc">Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 show-me"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">mattpocock/skills<span>5/8</span></div>
+        <div class="c-row" data-name="code-review" data-on="true">
+          <span class="c-body"><span class="name">code-review</span><span class="desc">Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 code-review"><i></i></button>
+        </div>
+        <div class="c-row" data-name="domain-modeling" data-on="true">
+          <span class="c-body"><span class="name">domain-modeling</span><span class="desc">Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a CONTEXT.md, or recording or editing an ADR.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 domain-modeling"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grill-me" data-on="false">
+          <span class="c-body"><span class="name">grill-me</span><span class="desc">A relentless interview to sharpen a plan or design.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 grill-me"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grill-with-docs" data-on="false">
+          <span class="c-body"><span class="name">grill-with-docs</span><span class="desc">A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 grill-with-docs"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grilling" data-on="true">
+          <span class="c-body"><span class="name">grilling</span><span class="desc">Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 grilling"><i></i></button>
+        </div>
+        <div class="c-row" data-name="setup-matt-pocock-skills" data-on="false">
+          <span class="c-body"><span class="name">setup-matt-pocock-skills</span><span class="desc">Configure this repo for the engineering skills — set up its issue tracker, triage label vocabulary, and domain doc layout. Run once before first use of the other engineering skills.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 setup-matt-pocock-skills"><i></i></button>
+        </div>
+        <div class="c-row" data-name="to-tickets" data-on="true">
+          <span class="c-body"><span class="name">to-tickets</span><span class="desc">Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker — edges as text in one file per ticket locally, or native blocking links on a real tracker.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 to-tickets"><i></i></button>
+        </div>
+        <div class="c-row" data-name="triage" data-on="true">
+          <span class="c-body"><span class="name">triage</span><span class="desc">Move issues and external PRs through a state machine of triage roles — categorise, verify, grill if needed, and write agent-ready briefs.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 triage"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">vercel-labs/skills<span>1/1</span></div>
+        <div class="c-row" data-name="find-skills" data-on="true">
+          <span class="c-body"><span class="name">find-skills</span><span class="desc">Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 find-skills"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">local<span>1/1</span></div>
+        <div class="c-row" data-name="huashu-design" data-on="true">
+          <span class="c-body"><span class="name">huashu-design</span><span class="desc">花叔Design——用HTML做高保真原型、幻灯片、动画、可视化与专家评审。任何新设计100%先出三个方向初稿给用户选（指定风格/品牌也不豁免），选定后才执行。触发词：做原型、PPT、幻灯片、动画、设计风格、评审、做个HTML页面、UI mockup、导出MP4/GIF、做个好看的。生产级Web App/需后端的系统不适用。</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 huashu-design"><i></i></button>
+        </div>
+      </div>
+          <div class="empty" hidden><b>没有匹配的技能</b><span>换个词试试，或清空筛选看全部 26 个。</span></div>
+        </div>
+        <div class="note" data-bad="true" hidden>切换失败：Host 写入失败。已恢复上一个状态。</div>
+        <div class="foot">
+          <span>dsh-skills-status</span>
+          <span class="ws">按工作区保存</span>
+        </div>
+      </div></div>
+    </div>
+    <div class="col">
+      <div class="colcap"><b>暗色</b>data-ds-dark-theme</div>
+      <div class="surface dark">      <div class="panel c-panel">
+        <div class="head">
+          <span class="title">技能</span>
+          <button class="x" aria-label="关闭">×</button>
+        </div>
+        <label class="search"><input type="search" placeholder="筛选技能" aria-label="筛选技能"><span class="c-count">10/26</span></label>
+        <div class="c-chips">
+          <button class="c-chip" aria-pressed="true">全部<span>26</span></button>
+          <button class="c-chip" aria-pressed="false">cloudflare<span>14</span></button>
+          <button class="c-chip" aria-pressed="false">mattpocock<span>8</span></button>
+          <button class="c-chip" aria-pressed="false">其他<span>4</span></button>
+        </div>
+        <div class="c-scopebar">
+          <span class="c-scope">全部 26 个</span>
+          <button class="textbtn">全部加载</button>
+          <button class="textbtn">全部关闭</button>
+        </div>
+        <div class="list grow">
+      <div class="c-sec group">
+        <div class="c-slabel">agent.qq.com<span>0/1</span></div>
+        <div class="c-row" data-name="agently-mail" data-on="false">
+          <span class="c-body"><span class="name">agently-mail</span><span class="desc">通过 agently-cli 命令行工具操作邮件：发送、回复、转发、搜索、读取、下载附件、管理收件箱。当用户需要进行任何邮件相关操作时使用此 skill。</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 agently-mail"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">cloudflare/skills<span>3/14</span></div>
+        <div class="c-row" data-name="agents-sdk" data-on="false">
+          <span class="c-body"><span class="name">agents-sdk</span><span class="desc">Build, debug, or review Cloudflare Agents SDK applications using the agents package.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 agents-sdk"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare" data-on="true">
+          <span class="c-body"><span class="name">cloudflare</span><span class="desc">Discover and choose Cloudflare products for apps, APIs, AI agents, storage, networking, and security. Use for architecture and product selection, including when the user describes a need without naming a Cloudflare product; then find the relevant skill or documentation.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 cloudflare"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-email-service" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-email-service</span><span class="desc">Implement or troubleshoot Cloudflare Email Sending and Email Routing integrations and their delivery configuration.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-email-service"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-one" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-one</span><span class="desc">Design, configure, troubleshoot, or review Cloudflare One Zero Trust and SASE deployments. Use cloudflare-one-migrations for migration planning from other vendors.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-one"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-one-migrations" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-one-migrations</span><span class="desc">Assess and plan migrations from existing VPN, SWG, or SASE platforms to Cloudflare One, including policy mapping, parity gaps, and rollout.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-one-migrations"><i></i></button>
+        </div>
+        <div class="c-row" data-name="durable-objects" data-on="true">
+          <span class="c-body"><span class="name">durable-objects</span><span class="desc">Build, debug, or review Cloudflare Durable Objects code for persistent state and coordination.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 durable-objects"><i></i></button>
+        </div>
+        <div class="c-row" data-name="nextjs-on-cloudflare" data-on="false">
+          <span class="c-body"><span class="name">nextjs-on-cloudflare</span><span class="desc">Build, migrate, and deploy Next.js apps on Cloudflare Workers with vinext. Use when starting a Next.js project on Cloudflare, moving an existing app to Workers, choosing between vinext and OpenNext, or setting up vinext for Workers. For setup, migration, or deployment, install vinext's upstream skills with `npx skills add cloudflare/vinext` if missing, then read and follow the applicable skill and docs.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 nextjs-on-cloudflare"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-migrate-to-next" data-on="false">
+          <span class="c-body"><span class="name">sandbox-migrate-to-next</span><span class="desc">Migrate Cloudflare Sandbox apps from stable @cloudflare/sandbox to @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-next for apps already on the preview.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-migrate-to-next"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-next" data-on="false">
+          <span class="c-body"><span class="name">sandbox-next</span><span class="desc">Build or maintain Cloudflare Sandbox apps on @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-migrate-to-next when porting a stable app.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-next"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-stable" data-on="false">
+          <span class="c-body"><span class="name">sandbox-stable</span><span class="desc">Build or maintain Cloudflare Sandbox apps on the stable @cloudflare/sandbox package. Use sandbox-next for preview apps and sandbox-migrate-to-next for stable-to-preview migrations.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-stable"><i></i></button>
+        </div>
+        <div class="c-row" data-name="turnstile-spin" data-on="false">
+          <span class="c-body"><span class="name">turnstile-spin</span><span class="desc">Set up, repair, or migrate to Cloudflare Turnstile bot verification in an existing frontend and backend, including server-side Siteverify.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 turnstile-spin"><i></i></button>
+        </div>
+        <div class="c-row" data-name="web-perf" data-on="false">
+          <span class="c-body"><span class="name">web-perf</span><span class="desc">Audit, diagnose, or optimize website loading and interaction performance, Core Web Vitals, and Lighthouse performance scores.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 web-perf"><i></i></button>
+        </div>
+        <div class="c-row" data-name="workers-best-practices" data-on="true">
+          <span class="c-body"><span class="name">workers-best-practices</span><span class="desc">Cloudflare Workers best practices for production applications. Use when writing, reviewing, or configuring Workers.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 workers-best-practices"><i></i></button>
+        </div>
+        <div class="c-row" data-name="wrangler" data-on="false">
+          <span class="c-body"><span class="name">wrangler</span><span class="desc">Run or troubleshoot Wrangler CLI commands and configure Worker projects for local development, deployment, and Cloudflare resource management.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 wrangler"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">humanlayer/skills<span>0/1</span></div>
+        <div class="c-row" data-name="show-me" data-on="false">
+          <span class="c-body"><span class="name">show-me</span><span class="desc">Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 show-me"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">mattpocock/skills<span>5/8</span></div>
+        <div class="c-row" data-name="code-review" data-on="true">
+          <span class="c-body"><span class="name">code-review</span><span class="desc">Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 code-review"><i></i></button>
+        </div>
+        <div class="c-row" data-name="domain-modeling" data-on="true">
+          <span class="c-body"><span class="name">domain-modeling</span><span class="desc">Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a CONTEXT.md, or recording or editing an ADR.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 domain-modeling"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grill-me" data-on="false">
+          <span class="c-body"><span class="name">grill-me</span><span class="desc">A relentless interview to sharpen a plan or design.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 grill-me"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grill-with-docs" data-on="false">
+          <span class="c-body"><span class="name">grill-with-docs</span><span class="desc">A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 grill-with-docs"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grilling" data-on="true">
+          <span class="c-body"><span class="name">grilling</span><span class="desc">Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 grilling"><i></i></button>
+        </div>
+        <div class="c-row" data-name="setup-matt-pocock-skills" data-on="false">
+          <span class="c-body"><span class="name">setup-matt-pocock-skills</span><span class="desc">Configure this repo for the engineering skills — set up its issue tracker, triage label vocabulary, and domain doc layout. Run once before first use of the other engineering skills.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 setup-matt-pocock-skills"><i></i></button>
+        </div>
+        <div class="c-row" data-name="to-tickets" data-on="true">
+          <span class="c-body"><span class="name">to-tickets</span><span class="desc">Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker — edges as text in one file per ticket locally, or native blocking links on a real tracker.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 to-tickets"><i></i></button>
+        </div>
+        <div class="c-row" data-name="triage" data-on="true">
+          <span class="c-body"><span class="name">triage</span><span class="desc">Move issues and external PRs through a state machine of triage roles — categorise, verify, grill if needed, and write agent-ready briefs.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 triage"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">vercel-labs/skills<span>1/1</span></div>
+        <div class="c-row" data-name="find-skills" data-on="true">
+          <span class="c-body"><span class="name">find-skills</span><span class="desc">Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 find-skills"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">local<span>1/1</span></div>
+        <div class="c-row" data-name="huashu-design" data-on="true">
+          <span class="c-body"><span class="name">huashu-design</span><span class="desc">花叔Design——用HTML做高保真原型、幻灯片、动画、可视化与专家评审。任何新设计100%先出三个方向初稿给用户选（指定风格/品牌也不豁免），选定后才执行。触发词：做原型、PPT、幻灯片、动画、设计风格、评审、做个HTML页面、UI mockup、导出MP4/GIF、做个好看的。生产级Web App/需后端的系统不适用。</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 huashu-design"><i></i></button>
+        </div>
+      </div>
+          <div class="empty" hidden><b>没有匹配的技能</b><span>换个词试试，或清空筛选看全部 26 个。</span></div>
+        </div>
+        <div class="note" data-bad="true" hidden>切换失败：Host 写入失败。已恢复上一个状态。</div>
+        <div class="foot">
+          <span>dsh-skills-status</span>
+          <span class="ws">按工作区保存</span>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+    <section class="states">
+    <h2>同一版的另外三个状态</h2>
+    <p>搜索把列表收窄、搜不到、Host 写入失败要回滚——这三个状态在现在的插件里都已经存在，
+    所以它们和默认态用同一套骨架，只换内容。</p>
+    <div class="sframe">
+      <figure><div class="cap">筛选中：只留匹配的组与行</div><div class="state-panel" data-mode="filter">      <div class="panel c-panel">
+        <div class="head">
+          <span class="title">技能</span>
+          <button class="x" aria-label="关闭">×</button>
+        </div>
+        <label class="search"><input type="search" placeholder="筛选技能" aria-label="筛选技能"><span class="c-count">10/26</span></label>
+        <div class="c-chips">
+          <button class="c-chip" aria-pressed="true">全部<span>26</span></button>
+          <button class="c-chip" aria-pressed="false">cloudflare<span>14</span></button>
+          <button class="c-chip" aria-pressed="false">mattpocock<span>8</span></button>
+          <button class="c-chip" aria-pressed="false">其他<span>4</span></button>
+        </div>
+        <div class="c-scopebar">
+          <span class="c-scope">全部 26 个</span>
+          <button class="textbtn">全部加载</button>
+          <button class="textbtn">全部关闭</button>
+        </div>
+        <div class="list grow">
+      <div class="c-sec group">
+        <div class="c-slabel">agent.qq.com<span>0/1</span></div>
+        <div class="c-row" data-name="agently-mail" data-on="false">
+          <span class="c-body"><span class="name">agently-mail</span><span class="desc">通过 agently-cli 命令行工具操作邮件：发送、回复、转发、搜索、读取、下载附件、管理收件箱。当用户需要进行任何邮件相关操作时使用此 skill。</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 agently-mail"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">cloudflare/skills<span>3/14</span></div>
+        <div class="c-row" data-name="agents-sdk" data-on="false">
+          <span class="c-body"><span class="name">agents-sdk</span><span class="desc">Build, debug, or review Cloudflare Agents SDK applications using the agents package.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 agents-sdk"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare" data-on="true">
+          <span class="c-body"><span class="name">cloudflare</span><span class="desc">Discover and choose Cloudflare products for apps, APIs, AI agents, storage, networking, and security. Use for architecture and product selection, including when the user describes a need without naming a Cloudflare product; then find the relevant skill or documentation.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 cloudflare"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-email-service" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-email-service</span><span class="desc">Implement or troubleshoot Cloudflare Email Sending and Email Routing integrations and their delivery configuration.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-email-service"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-one" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-one</span><span class="desc">Design, configure, troubleshoot, or review Cloudflare One Zero Trust and SASE deployments. Use cloudflare-one-migrations for migration planning from other vendors.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-one"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-one-migrations" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-one-migrations</span><span class="desc">Assess and plan migrations from existing VPN, SWG, or SASE platforms to Cloudflare One, including policy mapping, parity gaps, and rollout.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-one-migrations"><i></i></button>
+        </div>
+        <div class="c-row" data-name="durable-objects" data-on="true">
+          <span class="c-body"><span class="name">durable-objects</span><span class="desc">Build, debug, or review Cloudflare Durable Objects code for persistent state and coordination.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 durable-objects"><i></i></button>
+        </div>
+        <div class="c-row" data-name="nextjs-on-cloudflare" data-on="false">
+          <span class="c-body"><span class="name">nextjs-on-cloudflare</span><span class="desc">Build, migrate, and deploy Next.js apps on Cloudflare Workers with vinext. Use when starting a Next.js project on Cloudflare, moving an existing app to Workers, choosing between vinext and OpenNext, or setting up vinext for Workers. For setup, migration, or deployment, install vinext's upstream skills with `npx skills add cloudflare/vinext` if missing, then read and follow the applicable skill and docs.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 nextjs-on-cloudflare"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-migrate-to-next" data-on="false">
+          <span class="c-body"><span class="name">sandbox-migrate-to-next</span><span class="desc">Migrate Cloudflare Sandbox apps from stable @cloudflare/sandbox to @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-next for apps already on the preview.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-migrate-to-next"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-next" data-on="false">
+          <span class="c-body"><span class="name">sandbox-next</span><span class="desc">Build or maintain Cloudflare Sandbox apps on @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-migrate-to-next when porting a stable app.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-next"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-stable" data-on="false">
+          <span class="c-body"><span class="name">sandbox-stable</span><span class="desc">Build or maintain Cloudflare Sandbox apps on the stable @cloudflare/sandbox package. Use sandbox-next for preview apps and sandbox-migrate-to-next for stable-to-preview migrations.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-stable"><i></i></button>
+        </div>
+        <div class="c-row" data-name="turnstile-spin" data-on="false">
+          <span class="c-body"><span class="name">turnstile-spin</span><span class="desc">Set up, repair, or migrate to Cloudflare Turnstile bot verification in an existing frontend and backend, including server-side Siteverify.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 turnstile-spin"><i></i></button>
+        </div>
+        <div class="c-row" data-name="web-perf" data-on="false">
+          <span class="c-body"><span class="name">web-perf</span><span class="desc">Audit, diagnose, or optimize website loading and interaction performance, Core Web Vitals, and Lighthouse performance scores.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 web-perf"><i></i></button>
+        </div>
+        <div class="c-row" data-name="workers-best-practices" data-on="true">
+          <span class="c-body"><span class="name">workers-best-practices</span><span class="desc">Cloudflare Workers best practices for production applications. Use when writing, reviewing, or configuring Workers.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 workers-best-practices"><i></i></button>
+        </div>
+        <div class="c-row" data-name="wrangler" data-on="false">
+          <span class="c-body"><span class="name">wrangler</span><span class="desc">Run or troubleshoot Wrangler CLI commands and configure Worker projects for local development, deployment, and Cloudflare resource management.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 wrangler"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">humanlayer/skills<span>0/1</span></div>
+        <div class="c-row" data-name="show-me" data-on="false">
+          <span class="c-body"><span class="name">show-me</span><span class="desc">Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 show-me"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">mattpocock/skills<span>5/8</span></div>
+        <div class="c-row" data-name="code-review" data-on="true">
+          <span class="c-body"><span class="name">code-review</span><span class="desc">Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 code-review"><i></i></button>
+        </div>
+        <div class="c-row" data-name="domain-modeling" data-on="true">
+          <span class="c-body"><span class="name">domain-modeling</span><span class="desc">Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a CONTEXT.md, or recording or editing an ADR.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 domain-modeling"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grill-me" data-on="false">
+          <span class="c-body"><span class="name">grill-me</span><span class="desc">A relentless interview to sharpen a plan or design.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 grill-me"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grill-with-docs" data-on="false">
+          <span class="c-body"><span class="name">grill-with-docs</span><span class="desc">A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 grill-with-docs"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grilling" data-on="true">
+          <span class="c-body"><span class="name">grilling</span><span class="desc">Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 grilling"><i></i></button>
+        </div>
+        <div class="c-row" data-name="setup-matt-pocock-skills" data-on="false">
+          <span class="c-body"><span class="name">setup-matt-pocock-skills</span><span class="desc">Configure this repo for the engineering skills — set up its issue tracker, triage label vocabulary, and domain doc layout. Run once before first use of the other engineering skills.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 setup-matt-pocock-skills"><i></i></button>
+        </div>
+        <div class="c-row" data-name="to-tickets" data-on="true">
+          <span class="c-body"><span class="name">to-tickets</span><span class="desc">Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker — edges as text in one file per ticket locally, or native blocking links on a real tracker.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 to-tickets"><i></i></button>
+        </div>
+        <div class="c-row" data-name="triage" data-on="true">
+          <span class="c-body"><span class="name">triage</span><span class="desc">Move issues and external PRs through a state machine of triage roles — categorise, verify, grill if needed, and write agent-ready briefs.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 triage"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">vercel-labs/skills<span>1/1</span></div>
+        <div class="c-row" data-name="find-skills" data-on="true">
+          <span class="c-body"><span class="name">find-skills</span><span class="desc">Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 find-skills"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">local<span>1/1</span></div>
+        <div class="c-row" data-name="huashu-design" data-on="true">
+          <span class="c-body"><span class="name">huashu-design</span><span class="desc">花叔Design——用HTML做高保真原型、幻灯片、动画、可视化与专家评审。任何新设计100%先出三个方向初稿给用户选（指定风格/品牌也不豁免），选定后才执行。触发词：做原型、PPT、幻灯片、动画、设计风格、评审、做个HTML页面、UI mockup、导出MP4/GIF、做个好看的。生产级Web App/需后端的系统不适用。</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 huashu-design"><i></i></button>
+        </div>
+      </div>
+          <div class="empty" hidden><b>没有匹配的技能</b><span>换个词试试，或清空筛选看全部 26 个。</span></div>
+        </div>
+        <div class="note" data-bad="true" hidden>切换失败：Host 写入失败。已恢复上一个状态。</div>
+        <div class="foot">
+          <span>dsh-skills-status</span>
+          <span class="ws">按工作区保存</span>
+        </div>
+      </div></div></figure>
+      <figure><div class="cap">无匹配：说清搜的是什么，并给出出路</div><div class="state-panel" data-mode="empty">      <div class="panel c-panel">
+        <div class="head">
+          <span class="title">技能</span>
+          <button class="x" aria-label="关闭">×</button>
+        </div>
+        <label class="search"><input type="search" placeholder="筛选技能" aria-label="筛选技能"><span class="c-count">10/26</span></label>
+        <div class="c-chips">
+          <button class="c-chip" aria-pressed="true">全部<span>26</span></button>
+          <button class="c-chip" aria-pressed="false">cloudflare<span>14</span></button>
+          <button class="c-chip" aria-pressed="false">mattpocock<span>8</span></button>
+          <button class="c-chip" aria-pressed="false">其他<span>4</span></button>
+        </div>
+        <div class="c-scopebar">
+          <span class="c-scope">全部 26 个</span>
+          <button class="textbtn">全部加载</button>
+          <button class="textbtn">全部关闭</button>
+        </div>
+        <div class="list grow">
+      <div class="c-sec group">
+        <div class="c-slabel">agent.qq.com<span>0/1</span></div>
+        <div class="c-row" data-name="agently-mail" data-on="false">
+          <span class="c-body"><span class="name">agently-mail</span><span class="desc">通过 agently-cli 命令行工具操作邮件：发送、回复、转发、搜索、读取、下载附件、管理收件箱。当用户需要进行任何邮件相关操作时使用此 skill。</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 agently-mail"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">cloudflare/skills<span>3/14</span></div>
+        <div class="c-row" data-name="agents-sdk" data-on="false">
+          <span class="c-body"><span class="name">agents-sdk</span><span class="desc">Build, debug, or review Cloudflare Agents SDK applications using the agents package.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 agents-sdk"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare" data-on="true">
+          <span class="c-body"><span class="name">cloudflare</span><span class="desc">Discover and choose Cloudflare products for apps, APIs, AI agents, storage, networking, and security. Use for architecture and product selection, including when the user describes a need without naming a Cloudflare product; then find the relevant skill or documentation.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 cloudflare"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-email-service" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-email-service</span><span class="desc">Implement or troubleshoot Cloudflare Email Sending and Email Routing integrations and their delivery configuration.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-email-service"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-one" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-one</span><span class="desc">Design, configure, troubleshoot, or review Cloudflare One Zero Trust and SASE deployments. Use cloudflare-one-migrations for migration planning from other vendors.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-one"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-one-migrations" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-one-migrations</span><span class="desc">Assess and plan migrations from existing VPN, SWG, or SASE platforms to Cloudflare One, including policy mapping, parity gaps, and rollout.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-one-migrations"><i></i></button>
+        </div>
+        <div class="c-row" data-name="durable-objects" data-on="true">
+          <span class="c-body"><span class="name">durable-objects</span><span class="desc">Build, debug, or review Cloudflare Durable Objects code for persistent state and coordination.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 durable-objects"><i></i></button>
+        </div>
+        <div class="c-row" data-name="nextjs-on-cloudflare" data-on="false">
+          <span class="c-body"><span class="name">nextjs-on-cloudflare</span><span class="desc">Build, migrate, and deploy Next.js apps on Cloudflare Workers with vinext. Use when starting a Next.js project on Cloudflare, moving an existing app to Workers, choosing between vinext and OpenNext, or setting up vinext for Workers. For setup, migration, or deployment, install vinext's upstream skills with `npx skills add cloudflare/vinext` if missing, then read and follow the applicable skill and docs.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 nextjs-on-cloudflare"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-migrate-to-next" data-on="false">
+          <span class="c-body"><span class="name">sandbox-migrate-to-next</span><span class="desc">Migrate Cloudflare Sandbox apps from stable @cloudflare/sandbox to @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-next for apps already on the preview.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-migrate-to-next"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-next" data-on="false">
+          <span class="c-body"><span class="name">sandbox-next</span><span class="desc">Build or maintain Cloudflare Sandbox apps on @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-migrate-to-next when porting a stable app.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-next"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-stable" data-on="false">
+          <span class="c-body"><span class="name">sandbox-stable</span><span class="desc">Build or maintain Cloudflare Sandbox apps on the stable @cloudflare/sandbox package. Use sandbox-next for preview apps and sandbox-migrate-to-next for stable-to-preview migrations.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-stable"><i></i></button>
+        </div>
+        <div class="c-row" data-name="turnstile-spin" data-on="false">
+          <span class="c-body"><span class="name">turnstile-spin</span><span class="desc">Set up, repair, or migrate to Cloudflare Turnstile bot verification in an existing frontend and backend, including server-side Siteverify.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 turnstile-spin"><i></i></button>
+        </div>
+        <div class="c-row" data-name="web-perf" data-on="false">
+          <span class="c-body"><span class="name">web-perf</span><span class="desc">Audit, diagnose, or optimize website loading and interaction performance, Core Web Vitals, and Lighthouse performance scores.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 web-perf"><i></i></button>
+        </div>
+        <div class="c-row" data-name="workers-best-practices" data-on="true">
+          <span class="c-body"><span class="name">workers-best-practices</span><span class="desc">Cloudflare Workers best practices for production applications. Use when writing, reviewing, or configuring Workers.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 workers-best-practices"><i></i></button>
+        </div>
+        <div class="c-row" data-name="wrangler" data-on="false">
+          <span class="c-body"><span class="name">wrangler</span><span class="desc">Run or troubleshoot Wrangler CLI commands and configure Worker projects for local development, deployment, and Cloudflare resource management.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 wrangler"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">humanlayer/skills<span>0/1</span></div>
+        <div class="c-row" data-name="show-me" data-on="false">
+          <span class="c-body"><span class="name">show-me</span><span class="desc">Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 show-me"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">mattpocock/skills<span>5/8</span></div>
+        <div class="c-row" data-name="code-review" data-on="true">
+          <span class="c-body"><span class="name">code-review</span><span class="desc">Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 code-review"><i></i></button>
+        </div>
+        <div class="c-row" data-name="domain-modeling" data-on="true">
+          <span class="c-body"><span class="name">domain-modeling</span><span class="desc">Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a CONTEXT.md, or recording or editing an ADR.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 domain-modeling"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grill-me" data-on="false">
+          <span class="c-body"><span class="name">grill-me</span><span class="desc">A relentless interview to sharpen a plan or design.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 grill-me"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grill-with-docs" data-on="false">
+          <span class="c-body"><span class="name">grill-with-docs</span><span class="desc">A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 grill-with-docs"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grilling" data-on="true">
+          <span class="c-body"><span class="name">grilling</span><span class="desc">Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 grilling"><i></i></button>
+        </div>
+        <div class="c-row" data-name="setup-matt-pocock-skills" data-on="false">
+          <span class="c-body"><span class="name">setup-matt-pocock-skills</span><span class="desc">Configure this repo for the engineering skills — set up its issue tracker, triage label vocabulary, and domain doc layout. Run once before first use of the other engineering skills.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 setup-matt-pocock-skills"><i></i></button>
+        </div>
+        <div class="c-row" data-name="to-tickets" data-on="true">
+          <span class="c-body"><span class="name">to-tickets</span><span class="desc">Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker — edges as text in one file per ticket locally, or native blocking links on a real tracker.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 to-tickets"><i></i></button>
+        </div>
+        <div class="c-row" data-name="triage" data-on="true">
+          <span class="c-body"><span class="name">triage</span><span class="desc">Move issues and external PRs through a state machine of triage roles — categorise, verify, grill if needed, and write agent-ready briefs.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 triage"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">vercel-labs/skills<span>1/1</span></div>
+        <div class="c-row" data-name="find-skills" data-on="true">
+          <span class="c-body"><span class="name">find-skills</span><span class="desc">Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 find-skills"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">local<span>1/1</span></div>
+        <div class="c-row" data-name="huashu-design" data-on="true">
+          <span class="c-body"><span class="name">huashu-design</span><span class="desc">花叔Design——用HTML做高保真原型、幻灯片、动画、可视化与专家评审。任何新设计100%先出三个方向初稿给用户选（指定风格/品牌也不豁免），选定后才执行。触发词：做原型、PPT、幻灯片、动画、设计风格、评审、做个HTML页面、UI mockup、导出MP4/GIF、做个好看的。生产级Web App/需后端的系统不适用。</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 huashu-design"><i></i></button>
+        </div>
+      </div>
+          <div class="empty" hidden><b>没有匹配的技能</b><span>换个词试试，或清空筛选看全部 26 个。</span></div>
+        </div>
+        <div class="note" data-bad="true" hidden>切换失败：Host 写入失败。已恢复上一个状态。</div>
+        <div class="foot">
+          <span>dsh-skills-status</span>
+          <span class="ws">按工作区保存</span>
+        </div>
+      </div></div></figure>
+      <figure><div class="cap">切换失败：错误落在列表与底栏之间，列表不动</div><div class="state-panel" data-mode="fail">      <div class="panel c-panel">
+        <div class="head">
+          <span class="title">技能</span>
+          <button class="x" aria-label="关闭">×</button>
+        </div>
+        <label class="search"><input type="search" placeholder="筛选技能" aria-label="筛选技能"><span class="c-count">10/26</span></label>
+        <div class="c-chips">
+          <button class="c-chip" aria-pressed="true">全部<span>26</span></button>
+          <button class="c-chip" aria-pressed="false">cloudflare<span>14</span></button>
+          <button class="c-chip" aria-pressed="false">mattpocock<span>8</span></button>
+          <button class="c-chip" aria-pressed="false">其他<span>4</span></button>
+        </div>
+        <div class="c-scopebar">
+          <span class="c-scope">全部 26 个</span>
+          <button class="textbtn">全部加载</button>
+          <button class="textbtn">全部关闭</button>
+        </div>
+        <div class="list grow">
+      <div class="c-sec group">
+        <div class="c-slabel">agent.qq.com<span>0/1</span></div>
+        <div class="c-row" data-name="agently-mail" data-on="false">
+          <span class="c-body"><span class="name">agently-mail</span><span class="desc">通过 agently-cli 命令行工具操作邮件：发送、回复、转发、搜索、读取、下载附件、管理收件箱。当用户需要进行任何邮件相关操作时使用此 skill。</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 agently-mail"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">cloudflare/skills<span>3/14</span></div>
+        <div class="c-row" data-name="agents-sdk" data-on="false">
+          <span class="c-body"><span class="name">agents-sdk</span><span class="desc">Build, debug, or review Cloudflare Agents SDK applications using the agents package.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 agents-sdk"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare" data-on="true">
+          <span class="c-body"><span class="name">cloudflare</span><span class="desc">Discover and choose Cloudflare products for apps, APIs, AI agents, storage, networking, and security. Use for architecture and product selection, including when the user describes a need without naming a Cloudflare product; then find the relevant skill or documentation.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 cloudflare"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-email-service" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-email-service</span><span class="desc">Implement or troubleshoot Cloudflare Email Sending and Email Routing integrations and their delivery configuration.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-email-service"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-one" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-one</span><span class="desc">Design, configure, troubleshoot, or review Cloudflare One Zero Trust and SASE deployments. Use cloudflare-one-migrations for migration planning from other vendors.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-one"><i></i></button>
+        </div>
+        <div class="c-row" data-name="cloudflare-one-migrations" data-on="false">
+          <span class="c-body"><span class="name">cloudflare-one-migrations</span><span class="desc">Assess and plan migrations from existing VPN, SWG, or SASE platforms to Cloudflare One, including policy mapping, parity gaps, and rollout.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 cloudflare-one-migrations"><i></i></button>
+        </div>
+        <div class="c-row" data-name="durable-objects" data-on="true">
+          <span class="c-body"><span class="name">durable-objects</span><span class="desc">Build, debug, or review Cloudflare Durable Objects code for persistent state and coordination.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 durable-objects"><i></i></button>
+        </div>
+        <div class="c-row" data-name="nextjs-on-cloudflare" data-on="false">
+          <span class="c-body"><span class="name">nextjs-on-cloudflare</span><span class="desc">Build, migrate, and deploy Next.js apps on Cloudflare Workers with vinext. Use when starting a Next.js project on Cloudflare, moving an existing app to Workers, choosing between vinext and OpenNext, or setting up vinext for Workers. For setup, migration, or deployment, install vinext's upstream skills with `npx skills add cloudflare/vinext` if missing, then read and follow the applicable skill and docs.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 nextjs-on-cloudflare"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-migrate-to-next" data-on="false">
+          <span class="c-body"><span class="name">sandbox-migrate-to-next</span><span class="desc">Migrate Cloudflare Sandbox apps from stable @cloudflare/sandbox to @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-next for apps already on the preview.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-migrate-to-next"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-next" data-on="false">
+          <span class="c-body"><span class="name">sandbox-next</span><span class="desc">Build or maintain Cloudflare Sandbox apps on @cloudflare/sandbox@next (SDK 1.0 preview). Use sandbox-migrate-to-next when porting a stable app.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-next"><i></i></button>
+        </div>
+        <div class="c-row" data-name="sandbox-stable" data-on="false">
+          <span class="c-body"><span class="name">sandbox-stable</span><span class="desc">Build or maintain Cloudflare Sandbox apps on the stable @cloudflare/sandbox package. Use sandbox-next for preview apps and sandbox-migrate-to-next for stable-to-preview migrations.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 sandbox-stable"><i></i></button>
+        </div>
+        <div class="c-row" data-name="turnstile-spin" data-on="false">
+          <span class="c-body"><span class="name">turnstile-spin</span><span class="desc">Set up, repair, or migrate to Cloudflare Turnstile bot verification in an existing frontend and backend, including server-side Siteverify.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 turnstile-spin"><i></i></button>
+        </div>
+        <div class="c-row" data-name="web-perf" data-on="false">
+          <span class="c-body"><span class="name">web-perf</span><span class="desc">Audit, diagnose, or optimize website loading and interaction performance, Core Web Vitals, and Lighthouse performance scores.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 web-perf"><i></i></button>
+        </div>
+        <div class="c-row" data-name="workers-best-practices" data-on="true">
+          <span class="c-body"><span class="name">workers-best-practices</span><span class="desc">Cloudflare Workers best practices for production applications. Use when writing, reviewing, or configuring Workers.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 workers-best-practices"><i></i></button>
+        </div>
+        <div class="c-row" data-name="wrangler" data-on="false">
+          <span class="c-body"><span class="name">wrangler</span><span class="desc">Run or troubleshoot Wrangler CLI commands and configure Worker projects for local development, deployment, and Cloudflare resource management.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 wrangler"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">humanlayer/skills<span>0/1</span></div>
+        <div class="c-row" data-name="show-me" data-on="false">
+          <span class="c-body"><span class="name">show-me</span><span class="desc">Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 show-me"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">mattpocock/skills<span>5/8</span></div>
+        <div class="c-row" data-name="code-review" data-on="true">
+          <span class="c-body"><span class="name">code-review</span><span class="desc">Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 code-review"><i></i></button>
+        </div>
+        <div class="c-row" data-name="domain-modeling" data-on="true">
+          <span class="c-body"><span class="name">domain-modeling</span><span class="desc">Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a CONTEXT.md, or recording or editing an ADR.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 domain-modeling"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grill-me" data-on="false">
+          <span class="c-body"><span class="name">grill-me</span><span class="desc">A relentless interview to sharpen a plan or design.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 grill-me"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grill-with-docs" data-on="false">
+          <span class="c-body"><span class="name">grill-with-docs</span><span class="desc">A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 grill-with-docs"><i></i></button>
+        </div>
+        <div class="c-row" data-name="grilling" data-on="true">
+          <span class="c-body"><span class="name">grilling</span><span class="desc">Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 grilling"><i></i></button>
+        </div>
+        <div class="c-row" data-name="setup-matt-pocock-skills" data-on="false">
+          <span class="c-body"><span class="name">setup-matt-pocock-skills</span><span class="desc">Configure this repo for the engineering skills — set up its issue tracker, triage label vocabulary, and domain doc layout. Run once before first use of the other engineering skills.</span></span>
+          <button class="sw" role="switch" aria-checked="false" aria-label="加载 setup-matt-pocock-skills"><i></i></button>
+        </div>
+        <div class="c-row" data-name="to-tickets" data-on="true">
+          <span class="c-body"><span class="name">to-tickets</span><span class="desc">Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker — edges as text in one file per ticket locally, or native blocking links on a real tracker.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 to-tickets"><i></i></button>
+        </div>
+        <div class="c-row" data-name="triage" data-on="true">
+          <span class="c-body"><span class="name">triage</span><span class="desc">Move issues and external PRs through a state machine of triage roles — categorise, verify, grill if needed, and write agent-ready briefs.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 triage"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">vercel-labs/skills<span>1/1</span></div>
+        <div class="c-row" data-name="find-skills" data-on="true">
+          <span class="c-body"><span class="name">find-skills</span><span class="desc">Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 find-skills"><i></i></button>
+        </div>
+      </div>
+      <div class="c-sec group">
+        <div class="c-slabel">local<span>1/1</span></div>
+        <div class="c-row" data-name="huashu-design" data-on="true">
+          <span class="c-body"><span class="name">huashu-design</span><span class="desc">花叔Design——用HTML做高保真原型、幻灯片、动画、可视化与专家评审。任何新设计100%先出三个方向初稿给用户选（指定风格/品牌也不豁免），选定后才执行。触发词：做原型、PPT、幻灯片、动画、设计风格、评审、做个HTML页面、UI mockup、导出MP4/GIF、做个好看的。生产级Web App/需后端的系统不适用。</span></span>
+          <button class="sw" role="switch" aria-checked="true" aria-label="关闭 huashu-design"><i></i></button>
+        </div>
+      </div>
+          <div class="empty" hidden><b>没有匹配的技能</b><span>换个词试试，或清空筛选看全部 26 个。</span></div>
+        </div>
+        <div class="note" data-bad="true" hidden>切换失败：Host 写入失败。已恢复上一个状态。</div>
+        <div class="foot">
+          <span>dsh-skills-status</span>
+          <span class="ws">按工作区保存</span>
+        </div>
+      </div></div></figure>
+    </div>
+  </section>
+
+  <dl class="notes"><div><dt>骨架</dt><dd>标题 → 搜索（右侧嵌读数）→ 作用域 chip → 当前作用域的批量条 → 扁平列表（分组只做小标题）</dd></div><div><dt>胆量</dt><dd>删掉折叠树：现在的「全关即折叠 + 手动折叠带 allOff 戳记」是一台状态机，换成作用域筛选后它整体消失</dd></div><div><dt>取舍</dt><dd>扁平列表里组标题只做分隔，长列表靠 sticky 标题保上下文；chip 超过 6 个时要变成可横向滚动</dd></div></dl>
+
+<script>
+(() => {
+  const apply = (panel) => {
+    const mode = panel.dataset.mode || 'default';
+    const input = panel.querySelector('.search input');
+    const note = panel.querySelector('.note');
+    const list = panel.querySelector('.list');
+    const empty = panel.querySelector('.empty');
+    if (!input || !list) return;
+    const groups = [...list.querySelectorAll('.group')];
+    const rows = [...list.querySelectorAll('[data-name]')];
+
+    if (mode === 'filter') {
+      input.value = 'cloud';
+      groups.forEach(g => {
+        let hits = 0;
+        [...g.querySelectorAll('[data-name]')].forEach(r => {
+          const hit = (r.dataset.name || '').includes('cloud');
+          r.hidden = !hit;
+          if (hit) hits += 1;
+        });
+        g.hidden = hits === 0;
+      });
+      if (note) note.hidden = true;
+      if (empty) empty.hidden = true;
+      return;
+    }
+
+    if (mode === 'empty') {
+      input.value = 'zzz';
+      groups.forEach(g => { g.hidden = true; });
+      if (note) note.hidden = true;
+      if (empty) empty.hidden = false;
+      return;
+    }
+
+    groups.forEach(g => { g.hidden = false; });
+    rows.forEach(r => { r.hidden = false; });
+    if (empty) empty.hidden = true;
+    input.value = '';
+    if (note) note.hidden = mode !== 'fail';
+  };
+
+  document.querySelectorAll('.state-panel').forEach(apply);
+})();
+</script>
+</body>
+</html>

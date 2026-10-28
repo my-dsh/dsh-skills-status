@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.DS_Store
+
+# Local-only reference screenshots (third-party doc captures, not shipped)
+refs/
